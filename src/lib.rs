@@ -3,6 +3,7 @@ use image::io::Reader as ImageReader;
 use std::fs::File;
 use std::io::Write;
 use std::process::Command;
+use std::path::Path;
 use tempfile::tempdir;
 
 #[cfg(target_os = "windows")]
@@ -24,7 +25,8 @@ fn read() -> Result<DynamicImage, String> {
 }
 
 #[cfg(target_os = "windows")]
-fn write(file: &str) -> Result<(), String> {
+fn write(file_path: &Path) -> Result<(), String> {
+    let file = file_path.to_str().ok_or("path is wrong")?;
     let cmd = format!("System.Windows.Forms;[System.Windows.Forms.Clipboard]::SetImage([System.Drawing.Image]::FromFile('{}'));", file);
     Command::new("Powershell")
         .args(&["-Command", "Add-Type", "-AssemblyName", &cmd])
@@ -47,15 +49,12 @@ impl ImageClipboard {
         let mut f = File::create(&file_path).map_err(|e| e.to_string())?;
         f.write(data).map_err(|e| e.to_string())?;
 
-        let file_path_str = file_path
-            .to_str()
-            .ok_or("file path not found".to_string())?;
-        write(file_path_str)?;
+        write(&file_path)?;
         Ok(())
     }
 
-    pub fn write_from_file(&self, file_path: &str) -> Result<(), String> {
-        write(file_path)
+    pub fn write_from_file(&self, file_path: &Path) -> Result<(), String> {
+        write(&file_path)
     }
 
     pub fn read(&self) -> Result<DynamicImage, String> {
