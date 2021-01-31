@@ -1,3 +1,4 @@
+use anyhow::{Result, Context};
 use image::DynamicImage;
 use image::io::Reader as ImageReader;
 use std::fs::File;
@@ -7,31 +8,31 @@ use std::path::Path;
 use tempfile::tempdir;
 
 #[cfg(target_os = "windows")]
-fn read() -> Result<DynamicImage, String> {
-    let dir = tempdir().map_err(|e| e.to_string())?;
+fn read() -> Result<DynamicImage> {
+    let dir = tempdir()?;
     let file_path = dir.path().join("test.png");
-    File::create(&file_path).map_err(|e| e.to_string())?;
+    File::create(&file_path)?;
 
-    let file_path_str = file_path.to_str().ok_or("path not found".to_string())?;
+    let file_path_str = file_path.to_str().context("path not found")?;
     let cmd = format!("System.Windows.Forms;$clip=[Windows.Forms.Clipboard]::GetImage();if ($clip -ne $null) {{ $clip.Save('{}')  }};", file_path_str);
     Command::new("Powershell")
         .args(&["-Command", "Add-Type", "-AssemblyName", &cmd])
         .output()
-        .map_err(|e| e.to_string())?;
+        .context("failed to read image from clipboard")?;
 
-    let file = ImageReader::open(file_path).map_err(|e| e.to_string())?;
-    let img = file.decode().map_err(|e| e.to_string())?;
+    let file = ImageReader::open(file_path)?;
+    let img = file.decode()?;
     Ok(img)
 }
 
 #[cfg(target_os = "windows")]
-fn write(file_path: &Path) -> Result<(), String> {
-    let file = file_path.to_str().ok_or("path is wrong")?;
+fn write(file_path: &Path) -> Result<()> {
+    let file = file_path.to_str().context("file path is wrong")?;
     let cmd = format!("System.Windows.Forms;[System.Windows.Forms.Clipboard]::SetImage([System.Drawing.Image]::FromFile('{}'));", file);
     Command::new("Powershell")
         .args(&["-Command", "Add-Type", "-AssemblyName", &cmd])
         .output()
-        .map_err(|e| e.to_string())?;
+        .context("failed to write image to clipboard")?;
     Ok(())
 }
 
@@ -43,21 +44,20 @@ impl ImageClipboard {
         ImageClipboard {}
     }
 
-    pub fn write(&self, data: &[u8]) -> Result<(), String> {
-        let dir = tempdir().map_err(|e| e.to_string())?;
+    pub fn write(&self, data: &[u8]) -> Result<()> {
+        let dir = tempdir()?;
         let file_path = dir.path().join("test.png");
-        let mut f = File::create(&file_path).map_err(|e| e.to_string())?;
-        f.write(data).map_err(|e| e.to_string())?;
+        let mut f = File::create(&file_path)?;
+        f.write(data)?;
 
-        write(&file_path)?;
-        Ok(())
+        self.write_from_file(&file_path)
     }
 
-    pub fn write_from_file(&self, file_path: &Path) -> Result<(), String> {
+    pub fn write_from_file(&self, file_path: &Path) -> Result<()> {
         write(&file_path)
     }
 
-    pub fn read(&self) -> Result<DynamicImage, String> {
+    pub fn read(&self) -> Result<DynamicImage> {
         read()
     }
 }
@@ -66,16 +66,19 @@ impl ImageClipboard {
 mod tests {
     use super::*;
     #[test]
-    fn write_to_clipboard() -> Result<(), String> {
+    fn write_to_clipboard() -> Result<()> {
         let clipboard = ImageClipboard::new();
-        let img = ImageReader::open("./assets/test.png")
-            .map_err(|e| e.to_string())?
-            .decode()
-            .map_err(|e| e.to_string())?;
+        let img = ImageReader::open("./assets/test.png")?.decode()?;
         clipboard.write(img.as_bytes())?;
         let result = clipboard.read()?;
         assert!(result.as_bytes() == img.as_bytes(), "image was wrong");
 
         Ok(())
+    }
+
+    #[test]
+    fn write_from_file() -> Result<()> {
+        let clipboard = ImageClipboard::new();
+        clipboard.write_from_file(Path::new("./assets/test.png"))
     }
 }
