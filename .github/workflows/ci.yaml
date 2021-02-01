@@ -17,9 +17,11 @@ jobs:
     - uses: actions-rs/cargo@v1
       name: Build
       with:
-        command: build --verbose
+        command: build
+        args: --verbose
 
     - uses: actions-rs/cargo@v1
       name: Test
       with:
-        command: test --verbose
+        command: test
+        args: --verbose
