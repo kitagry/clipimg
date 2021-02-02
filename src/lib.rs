@@ -1,10 +1,10 @@
-use anyhow::{Result, Context};
-use image::DynamicImage;
+use anyhow::{anyhow, Context, Result};
 use image::io::Reader as ImageReader;
+use image::DynamicImage;
 use std::fs::File;
-use std::io::Write;
-use std::process::Command;
 use std::path::Path;
+use std::process::Command;
+use std::str;
 use tempfile::tempdir;
 
 #[cfg(target_os = "windows")]
@@ -36,6 +36,46 @@ fn write(file_path: &Path) -> Result<()> {
     Ok(())
 }
 
+#[cfg(target_os = "macos")]
+fn read() -> Result<DynamicImage> {
+    let dir = tempdir()?;
+    let file_path = dir.path().join("test.png");
+    File::create(&file_path)?;
+
+    let file_path_str = file_path.to_str().context("path not found")?;
+    let cmd = format!(
+        "write (the clipboard as «class PNGf») to (open for access \"{}\" with write permission)",
+        file_path_str
+    );
+    Command::new("osascript")
+        .args(&["-e", &cmd])
+        .output()
+        .context("failed to read image from clipboard")?;
+
+    let file = ImageReader::open(file_path)?;
+    let img = file.decode()?;
+    Ok(img)
+}
+
+#[cfg(target_os = "macos")]
+fn write(file_path: &Path) -> Result<()> {
+    let file = file_path.to_str().context("file path is wrong")?;
+    let cmd = format!("set the clipboard to (read \"{}\" as «class PNGf»)", file);
+    let output = Command::new("osascript")
+        .args(&["-e", &cmd])
+        .output()
+        .context("failed to write image to clipboard")?;
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(anyhow!(
+            "failed to run {}",
+            str::from_utf8(output.stderr.as_ref())?
+        ))
+    }
+}
+
 #[derive(Debug)]
 pub struct ImageClipboard {}
 
@@ -44,11 +84,10 @@ impl ImageClipboard {
         ImageClipboard {}
     }
 
-    pub fn write(&self, data: &[u8]) -> Result<()> {
+    pub fn write(&self, data: &DynamicImage) -> Result<()> {
         let dir = tempdir()?;
         let file_path = dir.path().join("test.png");
-        let mut f = File::create(&file_path)?;
-        f.write(data)?;
+        data.save(&file_path)?;
 
         self.write_from_file(&file_path)
     }
@@ -69,7 +108,7 @@ mod tests {
     fn write_to_clipboard() -> Result<()> {
         let clipboard = ImageClipboard::new();
         let img = ImageReader::open("./assets/test.png")?.decode()?;
-        clipboard.write(img.as_bytes())?;
+        clipboard.write(&img)?;
         let result = clipboard.read()?;
         assert!(result.as_bytes() == img.as_bytes(), "image was wrong");
 
