@@ -100,8 +100,8 @@ impl ImageClipboard {
         self.write_from_file(&file_path)
     }
 
-    pub fn write_from_file(&self, file_path: &Path) -> Result<()> {
-        write(&file_path)
+    pub fn write_from_file<P>(&self, file_path: P) -> Result<()> where P: AsRef<Path> {
+        write(file_path.as_ref())
     }
 
     pub fn read(&self) -> Result<DynamicImage> {

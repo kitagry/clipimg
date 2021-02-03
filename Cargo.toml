@@ -8,5 +8,6 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0.38"
+clap = "2.33.3"
 image = "0.23.11"
 tempfile = "3.1.0"
