@@ -1,5 +1,7 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::{App, Arg};
+use image::io::Reader as ImageReader;
+use std::io::{self, Cursor, Read};
 
 fn run() -> Result<()> {
     let app = App::new("imgcopy")
@@ -12,10 +14,15 @@ fn run() -> Result<()> {
     let clipboard = clipimg::ImageClipboard::new();
     if let Some(file) = matches.value_of("file") {
         clipboard.write_from_file(file)?;
-        Ok(())
     } else {
-        Err(anyhow!("file name is necessary"))
+        let mut buf = Vec::new();
+        io::stdin().read_to_end(&mut buf)?;
+        let reader = ImageReader::new(Cursor::new(buf))
+            .with_guessed_format()?
+            .decode()?;
+        clipboard.write(&reader)?;
     }
+    Ok(())
 }
 
 fn main() {
