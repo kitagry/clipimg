@@ -128,4 +128,10 @@ mod tests {
         let clipboard = ImageClipboard::new();
         clipboard.write_from_file(Path::new("./assets/test.png"))
     }
+
+    #[test]
+    fn write_jpeg() -> Result<()> {
+        let clipboard = ImageClipboard::new();
+        clipboard.write_from_file(Path::new("./assets/test.jpeg"))
+    }
 }
