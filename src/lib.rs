@@ -29,11 +29,19 @@ fn read() -> Result<DynamicImage> {
 fn write(file_path: &Path) -> Result<()> {
     let file = file_path.to_str().context("file path is wrong")?;
     let cmd = format!("System.Windows.Forms;[System.Windows.Forms.Clipboard]::SetImage([System.Drawing.Image]::FromFile('{}'));", file);
-    Command::new("Powershell")
+    let output = Command::new("Powershell")
         .args(&["-Command", "Add-Type", "-AssemblyName", &cmd])
         .output()
         .context("failed to write image to clipboard")?;
-    Ok(())
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(anyhow!(
+            "failed to run {}",
+            str::from_utf8(output.stderr.as_ref())?
+        ))
+    }
 }
 
 #[cfg(target_os = "macos")]
@@ -87,7 +95,7 @@ impl ImageClipboard {
     pub fn write(&self, data: &DynamicImage) -> Result<()> {
         let dir = tempdir()?;
         let file_path = dir.path().join("test.png");
-        data.save(&file_path)?;
+        data.save_with_format(&file_path, image::ImageFormat::Png)?;
 
         self.write_from_file(&file_path)
     }
