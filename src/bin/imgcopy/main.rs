@@ -8,7 +8,7 @@ fn run() -> Result<()> {
         .version("0.0.1")
         .author("Ryo Kitagawa<kitadrum50@gmail.com>")
         .about("imgcopy copy image to clipboard")
-        .arg(Arg::with_name("file").help("Sets target file").index(1));
+        .arg(Arg::with_name("file").help("File to copy. No argument at all to read from standard input.").index(1));
     let matches = app.get_matches();
 
     let clipboard = clipimg::ImageClipboard::new();
