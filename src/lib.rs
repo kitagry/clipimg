@@ -47,7 +47,7 @@ fn write(file_path: &Path) -> Result<()> {
 #[cfg(target_os = "macos")]
 fn read() -> Result<DynamicImage> {
     let dir = tempdir()?;
-    let file_path = dir.path().join("test.png");
+    let file_path = dir.path().join("test");
     File::create(&file_path)?;
 
     let file_path_str = file_path.to_str().context("path not found")?;
@@ -60,7 +60,7 @@ fn read() -> Result<DynamicImage> {
         .output()
         .context("failed to read image from clipboard")?;
 
-    let file = ImageReader::open(file_path)?;
+    let file = ImageReader::open(file_path)?.with_guessed_format()?;
     let img = file.decode()?;
     Ok(img)
 }
@@ -100,7 +100,10 @@ impl ImageClipboard {
         self.write_from_file(&file_path)
     }
 
-    pub fn write_from_file<P>(&self, file_path: P) -> Result<()> where P: AsRef<Path> {
+    pub fn write_from_file<P>(&self, file_path: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
         write(file_path.as_ref())
     }
 
