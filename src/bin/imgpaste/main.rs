@@ -3,6 +3,7 @@ use clap::{App, Arg};
 use image::ImageOutputFormat;
 use std::fs::File;
 use std::path::Path;
+use viuer::{self, Config};
 
 fn decide_image_format<P>(file_path: P) -> Result<image::ImageOutputFormat>
 where
@@ -31,15 +32,19 @@ fn run() -> Result<()> {
     let matches = app.get_matches();
 
     let clipboard = clipimg::ImageClipboard::new();
+    let img = clipboard.read()?;
     if let Some(file) = matches.value_of("file") {
-        let img = clipboard.read()?;
         let mut f = File::create(file)?;
         let format = decide_image_format(file)?;
         img.write_to(&mut f, format)?;
-        Ok(())
     } else {
-        Err(anyhow!("file should be specified."))
+        let conf = Config{
+            height: Some(10),
+            ..Default::default()
+        };
+        viuer::print(&img, &conf)?;
     }
+    Ok(())
 }
 
 fn main() {
