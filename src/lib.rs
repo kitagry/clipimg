@@ -121,7 +121,7 @@ mod tests {
         let img = ImageReader::open("./assets/test.png")?.decode()?;
         clipboard.write(&img)?;
         let result = clipboard.read()?;
-        assert!(result.as_bytes() == img.as_bytes(), "image was wrong");
+        assert_eq!(result.as_bytes(), img.as_bytes());
 
         Ok(())
     }
